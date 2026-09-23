@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { PhaserGame } from "@/components/phaser-game";
+import { StrategyGameBoard } from "@/components/game/strategy-game-board";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/")({
@@ -18,29 +18,30 @@ function HomeComponent() {
 					PLANET BUSTERS · WEB
 				</p>
 				<h1 className="font-bold text-3xl tracking-tight sm:text-4xl">
-					ゲーム開発を、ここから。
+					戦略スペースバトル
 				</h1>
 				<p className="max-w-2xl text-muted-foreground text-sm sm:text-base">
-					Phaser 4 を React
-					と組み合わせたゲームシーンのスターターです。惑星をクリックして動作を試せます。
+					フェーズ 0
+					の固定マッププレビューです。盤面と初期配置は共有ゲーム定義から描画しています。
 				</p>
 			</header>
 
 			<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-				<section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-					<div className="aspect-video min-h-64 w-full">
-						<PhaserGame />
+				<section className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+					<div className="min-h-64 w-full">
+						<StrategyGameBoard />
 					</div>
 				</section>
 
 				<aside className="flex flex-col gap-4">
 					<section className="rounded-xl border bg-card p-5">
 						<p className="mb-2 font-semibold text-muted-foreground text-xs tracking-widest">
-							CONTROLS
+							MAP LEGEND
 						</p>
-						<h2 className="font-semibold">惑星を調査</h2>
+						<h2 className="font-semibold">初期配置</h2>
 						<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-							ゲーム画面の惑星をクリックすると、調査カウントが増えます。このシーンを出発点にゲームを作成できます。
+							青は人間陣営、赤は CPU
+							陣営です。丸は主惑星、四角は戦艦、三角は戦闘機を表します。
 						</p>
 					</section>
 
