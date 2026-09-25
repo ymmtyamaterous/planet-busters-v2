@@ -79,3 +79,31 @@ export type MatchSnapshot = Readonly<{
 	units: readonly GameUnitSnapshot[];
 	recentActions: readonly GameActionSnapshot[];
 }>;
+
+export type AttackTarget =
+	| Readonly<{ type: "unit"; unitId: string }>
+	| Readonly<{ type: "planet"; side: GameSide }>;
+
+export type DomainGameAction =
+	| Readonly<{
+			type: "move";
+			unitId: string;
+			destination: GridPosition;
+	  }>
+	| Readonly<{ type: "attack"; unitId: string; target: AttackTarget }>
+	| Readonly<{ type: "wait"; unitId: string }>
+	| Readonly<{ type: "endTurn" }>;
+
+export type RandomNumberGenerator = Readonly<{
+	nextInt: (maxExclusive: number) => number;
+}>;
+
+export type AttackResolution = Readonly<{
+	attackerId: string;
+	target: AttackTarget;
+	accuracy: number;
+	roll: number;
+	result: AttackResultKind;
+	damage: number;
+	targetRemainingHp: number;
+}>;
