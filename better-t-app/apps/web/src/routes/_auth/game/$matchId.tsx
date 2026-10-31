@@ -27,6 +27,7 @@ import {
 	type BoardActionMode,
 	MatchBoard,
 } from "@/components/game/match-board";
+import { recoverMutationFailure } from "@/components/game/mutation-recovery";
 import { useAttackEffect } from "@/components/game/use-attack-effect";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -67,13 +68,12 @@ function MatchRoute() {
 				setActionMode(null);
 			},
 			onError: async (error, variables) => {
-				const code = (error as { data?: { code?: string } }).data?.code;
-				if (code === "STALE_MATCH_VERSION") {
-					if (variables.action.type !== "attack") await refreshMatch();
-					toast.info("対局の状態が更新されています。再取得後に操作してください。");
-					return;
-				}
-				toast.error(error.message);
+				await recoverMutationFailure({
+					error,
+					attack: variables.action.type === "attack",
+					refresh: refreshMatch,
+					notify: (message, kind) => kind === "info" ? toast.info(message) : toast.error(message),
+				});
 			},
 		}),
 	);
@@ -85,7 +85,13 @@ function MatchRoute() {
 					match,
 				);
 			},
-			onError: (error) => toast.error(error.message),
+			onError: async (error) => {
+				await recoverMutationFailure({
+					error,
+					refresh: refreshMatch,
+					notify: (message, kind) => kind === "info" ? toast.info(message) : toast.error(message),
+				});
+			},
 		}),
 	);
 

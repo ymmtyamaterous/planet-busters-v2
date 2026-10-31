@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createDb, type Database } from "@better-t-app/db";
+import { gameParticipant, gameUnit } from "@better-t-app/db/schema/game";
 import { createProcedureClient, ORPCError } from "@orpc/server";
+import { and, eq } from "drizzle-orm";
 
 import type { Context } from "../context";
 import { gameRouter } from "./game";
@@ -144,6 +146,75 @@ describe("game ORPC API", () => {
 			result.match.recentActions.some((action) => action.side === "cpu"),
 		).toBe(true);
 	});
+
+	test("操作後に再開し、降参した対局を履歴から確認できる", async () => {
+		const client = createGameClient("user-1");
+		const other = createGameClient("user-2");
+		const match = await client.create({});
+		const unit = match.units.find((candidate) => candidate.side === "human");
+		if (!unit) throw new Error("人間ユニットが見つかりません");
+		const updated = await client.submit({ matchId: match.id, expectedVersion: match.version, action: { type: "wait", unitId: unit.id } });
+		const resumed = await client.get({ matchId: match.id });
+		expect(resumed).toEqual(updated.match);
+		expect((await client.list({ status: "active" })).matches.map((item) => item.id)).toContain(match.id);
+		expect((await other.list({})).matches).toHaveLength(0);
+		await expect(client.surrender({ matchId: match.id, expectedVersion: match.version })).rejects.toBeInstanceOf(ORPCError);
+		const finished = await client.surrender({ matchId: match.id, expectedVersion: resumed.version });
+		expect(finished).toMatchObject({ status: "completed", winnerSide: "cpu" });
+		expect(finished.recentActions.some((action) => action.kind === "surrender")).toBe(true);
+		expect((await client.list({ status: "active" })).matches).toHaveLength(0);
+		expect((await client.list({ status: "completed" })).matches[0]).toMatchObject({ id: match.id, finishReason: "surrender" });
+		await expect(client.surrender({ matchId: match.id, expectedVersion: finished.version })).rejects.toBeInstanceOf(ORPCError);
+	});
+
+	test.each(["human", "cpu"] as const)("%s 陣営が惑星を破壊すると勝敗を保存する", async (winner) => {
+		const client = createGameClient("user-1");
+		const match = await client.create({});
+		const attacker = match.units.filter((unit) => unit.side === winner).sort((a, b) => a.id.localeCompare(b.id))[0];
+		if (!attacker) throw new Error("攻撃ユニットが見つかりません");
+		const loser = winner === "human" ? "cpu" : "human";
+		await db.update(gameParticipant).set({ planetHp: 1 }).where(and(eq(gameParticipant.matchId, match.id), eq(gameParticipant.side, loser)));
+		await db.update(gameUnit).set(winner === "human" ? { x: 10, y: 4 } : { x: 1, y: 3 }).where(eq(gameUnit.id, attacker.id));
+		const random = spyOn(crypto, "getRandomValues").mockImplementation((array) => {
+			if (array instanceof Uint32Array) array[0] = 50;
+			return array;
+		});
+		try {
+			const response = await client.submit({
+				matchId: match.id,
+				expectedVersion: match.version,
+				action: winner === "human" ? { type: "attack", unitId: attacker.id, target: { type: "planet", side: "cpu" } } : { type: "endTurn" },
+			});
+			expect(response.match).toMatchObject({ status: "completed", winnerSide: winner });
+			expect(response.match.planets.find((planet) => planet.side === loser)?.hp).toBe(0);
+			expect((await client.get({ matchId: match.id }))).toEqual(response.match);
+			expect((await client.list({ status: "completed" })).matches[0]).toMatchObject({ finishReason: "planet_destroyed", winnerSide: winner });
+			await expect(client.submit({ matchId: match.id, expectedVersion: response.match.version, action: { type: "endTurn" } })).rejects.toBeInstanceOf(ORPCError);
+		} finally {
+			random.mockRestore();
+		}
+	});
+
+	test("古い画面の競合後は最新状態を再取得できる", async () => {
+		const first = createGameClient("user-1");
+		const second = createGameClient("user-1");
+		const match = await first.create({});
+		const unit = match.units.find((candidate) => candidate.side === "human");
+		if (!unit) throw new Error("人間ユニットが見つかりません");
+		const updated = await second.submit({ matchId: match.id, expectedVersion: match.version, action: { type: "wait", unitId: unit.id } });
+		await expect(first.submit({ matchId: match.id, expectedVersion: match.version, action: { type: "endTurn" } })).rejects.toMatchObject({ data: { code: "STALE_MATCH_VERSION" } });
+		expect(await first.get({ matchId: match.id })).toEqual(updated.match);
+	});
+
+	test("保存途中のエラーは対局と行動ログをロールバックする", async () => {
+		const client = createGameClient("user-1");
+		const match = await client.create({});
+		const unit = match.units.find((candidate) => candidate.side === "human");
+		if (!unit) throw new Error("人間ユニットが見つかりません");
+		await db.$client.execute("CREATE TRIGGER fail_action BEFORE INSERT ON game_action BEGIN SELECT RAISE(ABORT, 'test failure'); END");
+		await expect(client.submit({ matchId: match.id, expectedVersion: match.version, action: { type: "wait", unitId: unit.id } })).rejects.toThrow();
+		expect(await client.get({ matchId: match.id })).toEqual(match);
+	});
 });
 
 function createGameClient(userId: string) {
@@ -155,5 +226,7 @@ function createGameClient(userId: string) {
 		create: createProcedureClient(gameRouter.createCpuMatch, { context }),
 		get: createProcedureClient(gameRouter.getMatch, { context }),
 		submit: createProcedureClient(gameRouter.submitAction, { context }),
+		list: createProcedureClient(gameRouter.listMatches, { context }),
+		surrender: createProcedureClient(gameRouter.surrender, { context }),
 	};
 }

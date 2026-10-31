@@ -9,6 +9,7 @@ import { UNIT_STATS } from "./rules";
 import type {
 	AttackTarget,
 	DomainGameAction,
+	GameSide,
 	GameUnitSnapshot,
 	GridPosition,
 	MatchSnapshot,
@@ -17,27 +18,29 @@ import type {
 export function chooseCpuAction(
 	state: MatchSnapshot,
 	map: MapDefinition,
+	side: GameSide = "cpu",
 ): DomainGameAction | null {
-	if (state.status !== "active" || state.turnSide !== "cpu") return null;
+	if (state.status !== "active" || state.turnSide !== side) return null;
+	const enemySide: GameSide = side === "cpu" ? "human" : "cpu";
 	const unit = state.units
 		.filter(
 			(candidate) =>
-				candidate.side === "cpu" &&
+				candidate.side === side &&
 				!candidate.isDestroyed &&
 				!candidate.hasActed,
 		)
 		.sort(compareUnits)[0];
 	if (!unit) return { type: "endTurn" };
 
-	const humanPlanet = getPlanetBySide(state, "human");
-	if (!humanPlanet) return { type: "wait", unitId: unit.id };
-	const planetTarget: AttackTarget = { type: "planet", side: "human" };
+	const enemyPlanet = getPlanetBySide(state, enemySide);
+	if (!enemyPlanet) return { type: "wait", unitId: unit.id };
+	const planetTarget: AttackTarget = { type: "planet", side: enemySide };
 	if (canAttackTarget(state, map, unit, planetTarget)) {
 		return { type: "attack", unitId: unit.id, target: planetTarget };
 	}
 
 	const attackableUnits = state.units
-		.filter((target) => target.side === "human" && !target.isDestroyed)
+		.filter((target) => target.side === enemySide && !target.isDestroyed)
 		.filter((target) =>
 			canAttackTarget(state, map, unit, { type: "unit", unitId: target.id }),
 		)
@@ -56,13 +59,13 @@ export function chooseCpuAction(
 			canAttackFromPosition(state, map, unit, position, planetTarget),
 		)
 		.sort((left, right) =>
-			comparePositionDistance(left, right, humanPlanet.position),
+			comparePositionDistance(left, right, enemyPlanet.position),
 		)[0];
 	if (attackPosition)
 		return { type: "move", unitId: unit.id, destination: attackPosition };
 
 	const closestPosition = [...reachable].sort((left, right) =>
-		comparePositionDistance(left, right, humanPlanet.position),
+		comparePositionDistance(left, right, enemyPlanet.position),
 	)[0];
 	return closestPosition
 		? { type: "move", unitId: unit.id, destination: closestPosition }

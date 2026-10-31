@@ -19,6 +19,7 @@ import {
 	type GameActionSnapshot,
 	type GameSide,
 	type MatchSnapshot,
+	PLANET_HP,
 	startTurn,
 	UNIT_STATS,
 } from "../game";
@@ -80,7 +81,7 @@ export const gameRouter = {
 						userId: context.session.user.id,
 						planetX: map.planets.human.x,
 						planetY: map.planets.human.y,
-						planetHp: 30,
+						planetHp: PLANET_HP,
 					},
 					{
 						id: cpuParticipantId,
@@ -88,7 +89,7 @@ export const gameRouter = {
 						side: "cpu",
 						planetX: map.planets.cpu.x,
 						planetY: map.planets.cpu.y,
-						planetHp: 30,
+						planetHp: PLANET_HP,
 					},
 				]);
 				await tx.insert(gameUnit).values(
