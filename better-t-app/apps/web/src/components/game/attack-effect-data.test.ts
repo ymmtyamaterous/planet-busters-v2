@@ -17,13 +17,13 @@ const effect = toAttackEffectData(match, resolution);
 describe("攻撃演出", () => {
 	test("利用可能なモニター領域の中央にポップアップを配置する", () => {
 		expect(attackWindowFeatures({ availLeft: 0, availTop: 0, availWidth: 1920, availHeight: 1080 }))
-			.toBe("popup=yes,width=620,height=520,left=650,top=280");
+			.toBe("popup=yes,width=620,height=620,left=650,top=230");
 		expect(attackWindowFeatures({ availLeft: -1920, availTop: 40, availWidth: 1920, availHeight: 1040 }))
-			.toBe("popup=yes,width=620,height=520,left=-1270,top=300");
+			.toBe("popup=yes,width=620,height=620,left=-1270,top=250");
 		expect(attackWindowFeatures({ availLeft: 100, availTop: 50, availWidth: 400, availHeight: 300 }))
-			.toBe("popup=yes,width=620,height=520,left=100,top=50");
+			.toBe("popup=yes,width=620,height=620,left=100,top=50");
 		expect(attackWindowFeatures({ availWidth: 1920, availHeight: 1080 }))
-			.toBe("popup=yes,width=620,height=520,left=650,top=280");
+			.toBe("popup=yes,width=620,height=620,left=650,top=230");
 	});
 
 	test("攻撃前の状態と確定結果から撃破後も表示可能なデータを作る", () => {

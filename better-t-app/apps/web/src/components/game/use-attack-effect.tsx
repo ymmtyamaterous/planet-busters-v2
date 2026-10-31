@@ -68,7 +68,7 @@ export function useAttackEffect(onFinished: () => Promise<void>) {
 				for (const style of document.querySelectorAll('link[rel="stylesheet"], style')) {
 					popup.document.head.appendChild(style.cloneNode(true));
 				}
-				popup.document.body.style.cssText = "margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080d1d;color:white";
+				popup.document.body.style.cssText = "margin:0;min-height:100vh;box-sizing:border-box;padding:16px;display:flex;align-items:center;justify-content:center;background:#080d1d;color:white";
 				popup.document.body.textContent = "攻撃結果を待っています…";
 				session.listener = (event) => {
 					if (sessionRef.current !== session || !isEffectMessage(event, window.location.origin, window, session.token)) return;

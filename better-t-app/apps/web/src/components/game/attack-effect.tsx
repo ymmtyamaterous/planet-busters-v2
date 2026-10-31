@@ -62,10 +62,10 @@ export function AttackEffect({ effect, onComplete }: { effect: AttackEffectData;
 	}, [effect]);
 
 	return (
-		<section aria-label="攻撃演出" className="w-full max-w-xl rounded-xl border border-slate-600 bg-slate-950 p-5 text-slate-50 shadow-2xl">
+		<section aria-label="攻撃演出" className="m-auto w-full max-w-xl rounded-xl border border-slate-600 bg-slate-950 p-5 text-slate-50 shadow-2xl">
 			<h1 className="font-bold text-lg">攻撃結果</h1>
 			<p className="mt-2 text-sm">{effect.attacker} → {effect.target}</p>
-			<div aria-hidden="true" className="mt-3 overflow-hidden rounded-lg" ref={mountRef} />
+			<div aria-hidden="true" className="mx-auto mt-3 aspect-[51/22] w-full max-w-[510px] overflow-hidden rounded-lg" ref={mountRef} />
 			{revealed ? <div aria-live="polite" className="mt-3 text-center">
 				<strong className="text-2xl text-amber-300">{RESULT_LABELS[effect.result]}</strong>
 				<p>ダメージ {effect.damage} / 残り HP {effect.remainingHp}</p>

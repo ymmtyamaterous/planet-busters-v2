@@ -38,7 +38,7 @@ export function toAttackEffectData(
 
 export function attackWindowFeatures(screen: Pick<Screen, "availWidth" | "availHeight"> & { availLeft?: number; availTop?: number }): string {
 	const width = 620;
-	const height = 520;
+	const height = 620;
 	const left = (screen.availLeft ?? 0) + Math.max(0, Math.round((screen.availWidth - width) / 2));
 	const top = (screen.availTop ?? 0) + Math.max(0, Math.round((screen.availHeight - height) / 2));
 	return `popup=yes,width=${width},height=${height},left=${left},top=${top}`;
