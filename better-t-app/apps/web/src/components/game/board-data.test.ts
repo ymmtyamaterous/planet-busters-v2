@@ -4,7 +4,7 @@ import {
 	NEBULA_CROSSROADS_MAP,
 } from "@better-t-app/api/game";
 
-import { getBoardPresentation } from "./board-data";
+import { getBoardAction, getBoardPresentation } from "./board-data";
 
 const match: MatchSnapshot = {
 	id: "match-1",
@@ -80,5 +80,39 @@ describe("getBoardPresentation", () => {
 				"human-fighter",
 			).selectedUnit,
 		).toBeNull();
+	});
+});
+
+describe("getBoardAction", () => {
+	const presentation = getBoardPresentation(match, "human-fighter");
+
+	test("通常時は未行動の自軍ユニットだけを選択できる", () => {
+		expect(getBoardAction(match, presentation, null, { x: 2, y: 3 }, false)).toEqual({
+			type: "select",
+			unitId: "human-fighter",
+		});
+		expect(getBoardAction(match, presentation, null, { x: 4, y: 3 }, false)).toBeNull();
+		expect(getBoardAction(match, presentation, null, { x: 3, y: 3 }, false)).toBeNull();
+		const acted = { ...match, units: match.units.map((unit) => ({ ...unit, hasActed: true })) };
+		expect(getBoardAction(acted, presentation, null, { x: 2, y: 3 }, false)).toBeNull();
+	});
+
+	test("移動先と攻撃対象は有効なマスだけを操作できる", () => {
+		expect(getBoardAction(match, presentation, "move", { x: 3, y: 3 }, false)).toEqual({
+			type: "move",
+			destination: { x: 3, y: 3 },
+		});
+		expect(getBoardAction(match, presentation, "move", { x: 4, y: 3 }, false)).toBeNull();
+		expect(getBoardAction(match, presentation, "attack", { x: 4, y: 3 }, false)).toEqual({
+			type: "attack",
+			target: { type: "unit", unitId: "cpu-fighter" },
+		});
+		expect(getBoardAction(match, presentation, "attack", { x: 3, y: 3 }, false)).toBeNull();
+	});
+
+	test("操作無効時、CPUターン、対局終了後は操作できない", () => {
+		expect(getBoardAction(match, presentation, null, { x: 2, y: 3 }, true)).toBeNull();
+		expect(getBoardAction({ ...match, turnSide: "cpu" }, presentation, "move", { x: 3, y: 3 }, false)).toBeNull();
+		expect(getBoardAction({ ...match, status: "completed" }, presentation, "attack", { x: 4, y: 3 }, false)).toBeNull();
 	});
 });

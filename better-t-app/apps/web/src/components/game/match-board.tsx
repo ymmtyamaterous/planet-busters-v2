@@ -5,12 +5,16 @@ import type {
 } from "@better-t-app/api/game";
 import { useEffect, useRef } from "react";
 
-import { getBoardPresentation } from "./board-data";
+import {
+	type BoardActionMode,
+	getBoardAction,
+	getBoardPresentation,
+} from "./board-data";
 
 const CELL_SIZE = 70;
 const BOARD_PADDING = 60;
 
-export type BoardActionMode = "move" | "attack" | null;
+export type { BoardActionMode } from "./board-data";
 
 type MatchBoardProps = {
 	match: MatchSnapshot;
@@ -50,11 +54,6 @@ export function MatchBoard({
 				x: BOARD_PADDING + x * CELL_SIZE + CELL_SIZE / 2,
 				y: BOARD_PADDING + y * CELL_SIZE + CELL_SIZE / 2,
 			});
-			const hasPosition = (
-				positions: readonly GridPosition[],
-				position: GridPosition,
-			) => positions.some(({ x, y }) => x === position.x && y === position.y);
-
 			class MatchBoardScene extends Phaser.Scene {
 				constructor() {
 					super("match-board");
@@ -133,8 +132,7 @@ export function MatchBoard({
 						const point = centerOf(unit.position);
 						const color = unit.side === "human" ? 0x80c7ff : 0xff9aa5;
 						const isSelected = unit.id === selectedUnit?.id;
-						const shape =
-							unit.kind === "battleship"
+						unit.kind === "battleship"
 								? this.add
 										.rectangle(point.x, point.y, 38, 24, color)
 										.setStrokeStyle(
@@ -147,21 +145,6 @@ export function MatchBoard({
 											isSelected ? 4 : 2,
 											isSelected ? 0xfacc15 : 0xffffff,
 										);
-						shape.setInteractive({
-							useHandCursor:
-								unit.side === "human" &&
-								!unit.hasActed &&
-								match.turnSide === "human",
-						});
-						shape.on("pointerup", () => {
-							if (
-								!disabled &&
-								unit.side === "human" &&
-								!unit.hasActed &&
-								match.turnSide === "human"
-							)
-								onSelectUnit(unit.id);
-						});
 						this.add
 							.text(
 								point.x,
@@ -179,28 +162,22 @@ export function MatchBoard({
 					for (let y = 0; y < map.size.height; y += 1) {
 						for (let x = 0; x < map.size.width; x += 1) {
 							const position = { x, y };
+							const action = getBoardAction(
+								match,
+								presentation,
+								actionMode,
+								position,
+								disabled,
+							);
+							if (!action) continue;
 							const point = centerOf(position);
 							const zone = this.add
 								.zone(point.x, point.y, CELL_SIZE, CELL_SIZE)
-								.setInteractive({ useHandCursor: actionMode !== null });
+								.setInteractive({ useHandCursor: true });
 							zone.on("pointerup", () => {
-								if (disabled) return;
-								if (
-									actionMode === "move" &&
-									hasPosition(reachablePositions, position)
-								)
-									onMove(position);
-								if (actionMode === "attack") {
-									const target = attackTargets.find(
-										(candidate) =>
-											candidate.position.x === x && candidate.position.y === y,
-									)?.target;
-									if (target) onAttack(target);
-								}
-								if (actionMode === null) {
-									const unit = match.units.find((candidate) => candidate.position.x === x && candidate.position.y === y && candidate.side === "human" && !candidate.isDestroyed && !candidate.hasActed);
-									if (unit) onSelectUnit(unit.id);
-								}
+								if (action.type === "select") onSelectUnit(action.unitId);
+								if (action.type === "move") onMove(action.destination);
+								if (action.type === "attack") onAttack(action.target);
 							});
 						}
 					}
