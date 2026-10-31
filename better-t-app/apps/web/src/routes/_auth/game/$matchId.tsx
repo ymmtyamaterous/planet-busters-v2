@@ -5,7 +5,7 @@ import type {
 } from "@better-t-app/api/game";
 import { Button } from "@better-t-app/ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	Crosshair,
 	Flag,
@@ -18,11 +18,16 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+	performAttack,
+	toAttackEffectData,
+} from "@/components/game/attack-effect-data";
 import { getBoardPresentation } from "@/components/game/board-data";
 import {
 	type BoardActionMode,
 	MatchBoard,
 } from "@/components/game/match-board";
+import { useAttackEffect } from "@/components/game/use-attack-effect";
 import { orpc, queryClient } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_auth/game/$matchId")({
@@ -36,6 +41,21 @@ function MatchRoute() {
 	);
 	const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
 	const [actionMode, setActionMode] = useState<BoardActionMode>(null);
+	const [syncFailed, setSyncFailed] = useState(false);
+	const [syncing, setSyncing] = useState(false);
+	const refreshMatch = async () => {
+		setSyncing(true);
+		try {
+			await matchQuery.refetch({ throwOnError: true });
+			setSyncFailed(false);
+		} catch {
+			setSyncFailed(true);
+			toast.error("対局の状態を更新できませんでした。再取得してください。");
+		} finally {
+			setSyncing(false);
+		}
+	};
+	const attackEffect = useAttackEffect(refreshMatch);
 	const submitAction = useMutation(
 		orpc.game.submitAction.mutationOptions({
 			onSuccess: ({ match }) => {
@@ -46,11 +66,11 @@ function MatchRoute() {
 				setSelectedUnitId(null);
 				setActionMode(null);
 			},
-			onError: async (error) => {
+			onError: async (error, variables) => {
 				const code = (error as { data?: { code?: string } }).data?.code;
 				if (code === "STALE_MATCH_VERSION") {
-					await matchQuery.refetch();
-					toast.info("対局の状態を更新しました。もう一度操作してください。");
+					if (variables.action.type !== "attack") await refreshMatch();
+					toast.info("対局の状態が更新されています。再取得後に操作してください。");
 					return;
 				}
 				toast.error(error.message);
@@ -75,7 +95,12 @@ function MatchRoute() {
 	const match = matchQuery.data;
 	const presentation = getBoardPresentation(match, selectedUnitId);
 	const isHumanTurn = match.status === "active" && match.turnSide === "human";
-	const isSending = submitAction.isPending || surrender.isPending;
+	const isSending =
+		submitAction.isPending ||
+		surrender.isPending ||
+		attackEffect.busy ||
+		syncFailed ||
+		syncing;
 	const submit = (action: DomainGameAction) =>
 		submitAction.mutate({ matchId, expectedVersion: match.version, action });
 	const selectUnit = (unitId: string) => {
@@ -91,18 +116,34 @@ function MatchRoute() {
 			});
 		}
 	};
-	const attack = (target: AttackTarget) => {
-		if (presentation.selectedUnit) {
-			submit({
-				type: "attack",
-				unitId: presentation.selectedUnit.id,
-				target,
+	const attack = async (target: AttackTarget) => {
+		const unit = presentation.selectedUnit;
+		if (unit && !isSending) {
+			await performAttack({
+				begin: attackEffect.begin,
+				submit: () =>
+					submitAction.mutateAsync({
+						matchId,
+						expectedVersion: match.version,
+						action: { type: "attack", unitId: unit.id, target },
+					}),
+				present: async (response) => {
+					if (response.attackResult) {
+						attackEffect.publish(toAttackEffectData(match, response.attackResult));
+					} else {
+						attackEffect.abort();
+						await refreshMatch();
+					}
+				},
+				abort: attackEffect.abort,
+				onFailure: refreshMatch,
 			});
 		}
 	};
 
 	return (
 		<main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6">
+			{attackEffect.element}
 			<header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 				<div>
 					<p className="font-semibold text-primary text-xs tracking-[0.28em]">
@@ -127,13 +168,21 @@ function MatchRoute() {
 					CPU が行動中です。状態を更新しています…
 				</div>
 			) : null}
-			{isSending ? (
+			{syncFailed ? (
+				<div className="rounded-lg border border-destructive p-3 text-sm" role="alert">
+					対局の状態を再取得するまで操作できません。
+					<Button onClick={() => void refreshMatch()} variant="outline">
+						再取得
+					</Button>
+				</div>
+			) : null}
+			{isSending && !syncFailed ? (
 				<div
 					aria-live="polite"
 					className="flex items-center gap-2 rounded-lg border bg-muted px-4 py-3 text-sm"
 				>
-					<RotateCcw aria-hidden="true" className="size-4 animate-spin" />
-					操作を送信中…
+					<RotateCcw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+					{attackEffect.busy ? "攻撃演出・状態更新中…" : "操作を送信中…"}
 				</div>
 			) : null}
 
@@ -141,6 +190,7 @@ function MatchRoute() {
 				<section className="overflow-x-auto rounded-xl border bg-card shadow-sm">
 					<MatchBoard
 						actionMode={actionMode}
+						disabled={isSending || !isHumanTurn}
 						match={match}
 						onAttack={attack}
 						onMove={move}
@@ -152,6 +202,15 @@ function MatchRoute() {
 					<PlanetPanel match={match} />
 					<section className="rounded-xl border bg-card p-4">
 						<h2 className="font-semibold">操作</h2>
+						<fieldset aria-label="ユニットを選択" className="mt-3 flex flex-wrap gap-2">
+							{match.units
+								.filter((unit) => unit.side === "human" && !unit.isDestroyed && !unit.hasActed)
+								.map((unit) => (
+									<Button key={unit.id} disabled={isSending || !isHumanTurn} onClick={() => selectUnit(unit.id)} variant={selectedUnitId === unit.id ? "default" : "outline"}>
+										{unit.kind === "fighter" ? "戦闘機" : "戦艦"} ({unit.position.x}, {unit.position.y}) HP {unit.hp}
+									</Button>
+								))}
+						</fieldset>
 						<p className="mt-1 text-muted-foreground text-sm">
 							{presentation.selectedUnit
 								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp}`
@@ -207,14 +266,28 @@ function MatchRoute() {
 							</Button>
 						</div>
 						{actionMode === "move" ? (
-							<p className="mt-3 text-primary text-xs">
-								青いマスから移動先を選択してください。
-							</p>
+							<div className="mt-3">
+								<p className="text-primary text-xs">青い＋のマスから移動先を選択してください。</p>
+								<div className="mt-2 flex flex-wrap gap-1">
+									{presentation.reachablePositions.map((position) => (
+										<Button key={`${position.x}-${position.y}`} disabled={isSending} onClick={() => move(position)} variant="outline">
+											移動 ({position.x}, {position.y})
+										</Button>
+									))}
+								</div>
+							</div>
 						) : null}
 						{actionMode === "attack" ? (
-							<p className="mt-3 text-destructive text-xs">
-								赤い対象を選択してください。
-							</p>
+							<div className="mt-3">
+								<p className="text-destructive text-xs">赤い×の対象を選択してください。</p>
+								<div className="mt-2 flex flex-wrap gap-1">
+									{presentation.attackTargets.map(({ target, position }) => (
+										<Button key={`${position.x}-${position.y}`} disabled={isSending} onClick={() => void attack(target)} variant="outline">
+											攻撃 ({position.x}, {position.y})
+										</Button>
+									))}
+								</div>
+							</div>
 						) : null}
 					</section>
 					<ActionLog actions={match.recentActions} />

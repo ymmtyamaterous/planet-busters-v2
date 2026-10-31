@@ -16,6 +16,7 @@ type MatchBoardProps = {
 	match: MatchSnapshot;
 	selectedUnitId: string | null;
 	actionMode: BoardActionMode;
+	disabled: boolean;
 	onSelectUnit: (unitId: string) => void;
 	onMove: (destination: GridPosition) => void;
 	onAttack: (target: AttackTarget) => void;
@@ -25,6 +26,7 @@ export function MatchBoard({
 	match,
 	selectedUnitId,
 	actionMode,
+	disabled,
 	onSelectUnit,
 	onMove,
 	onAttack,
@@ -90,6 +92,7 @@ export function MatchBoard({
 								0.32,
 							)
 							.setStrokeStyle(2, 0x93c5fd);
+						this.add.text(point.x - 25, point.y - 27, "+", { color: "#ffffff", fontSize: "18px" });
 					}
 					for (const { position } of attackTargets) {
 						const point = centerOf(position);
@@ -103,6 +106,7 @@ export function MatchBoard({
 								0.32,
 							)
 							.setStrokeStyle(2, 0xfca5a5);
+						this.add.text(point.x - 25, point.y - 27, "×", { color: "#ffffff", fontSize: "18px" });
 					}
 					for (const asteroid of map.asteroids) {
 						const point = centerOf(asteroid);
@@ -151,6 +155,7 @@ export function MatchBoard({
 						});
 						shape.on("pointerup", () => {
 							if (
+								!disabled &&
 								unit.side === "human" &&
 								!unit.hasActed &&
 								match.turnSide === "human"
@@ -179,6 +184,7 @@ export function MatchBoard({
 								.zone(point.x, point.y, CELL_SIZE, CELL_SIZE)
 								.setInteractive({ useHandCursor: actionMode !== null });
 							zone.on("pointerup", () => {
+								if (disabled) return;
 								if (
 									actionMode === "move" &&
 									hasPosition(reachablePositions, position)
@@ -190,6 +196,10 @@ export function MatchBoard({
 											candidate.position.x === x && candidate.position.y === y,
 									)?.target;
 									if (target) onAttack(target);
+								}
+								if (actionMode === null) {
+									const unit = match.units.find((candidate) => candidate.position.x === x && candidate.position.y === y && candidate.side === "human" && !candidate.isDestroyed && !candidate.hasActed);
+									if (unit) onSelectUnit(unit.id);
 								}
 							});
 						}
@@ -214,7 +224,7 @@ export function MatchBoard({
 			isDisposed = true;
 			game?.destroy(true);
 		};
-	}, [actionMode, match, onAttack, onMove, onSelectUnit, presentation]);
+	}, [actionMode, disabled, match, onAttack, onMove, onSelectUnit, presentation]);
 
 	return (
 		<div
