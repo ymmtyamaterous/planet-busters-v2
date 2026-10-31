@@ -134,6 +134,7 @@ export function MatchBoard({
 						drawUnit(this, unit, point, {
 							selected: unit.id === selectedUnit?.id,
 							hp: unit.hp,
+							hasActed: unit.hasActed,
 						});
 					}
 					for (let y = 0; y < map.size.height; y += 1) {

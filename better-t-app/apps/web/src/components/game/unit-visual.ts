@@ -9,7 +9,7 @@ export function drawUnit(
 	scene: Scene,
 	unit: UnitVisual,
 	point: { x: number; y: number },
-	options: { selected?: boolean; hp?: number } = {},
+	options: { selected?: boolean; hp?: number; hasActed?: boolean } = {},
 ) {
 	const color = unit.side === "human" ? 0x80c7ff : 0xff9aa5;
 	const shape =
@@ -36,6 +36,19 @@ export function drawUnit(
 					strokeThickness: 3,
 				},
 			)
+			.setOrigin(0.5);
+	}
+
+	if (unit.side === "human" && options.hasActed !== undefined) {
+		scene.add
+			.text(point.x, point.y + 25, options.hasActed ? "済" : "未", {
+				align: "center",
+				backgroundColor: options.hasActed ? "#475569" : "#166534",
+				color: "#ffffff",
+				fontSize: "12px",
+				fontStyle: "bold",
+				padding: { x: 4, y: 1 },
+			})
 			.setOrigin(0.5);
 	}
 }

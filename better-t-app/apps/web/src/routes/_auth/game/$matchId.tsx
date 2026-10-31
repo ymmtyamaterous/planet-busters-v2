@@ -197,6 +197,11 @@ function MatchRoute() {
 
 			<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
 				<section className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+					<div aria-label="ユニットの行動状態" className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-xs">
+						<span className="font-medium">自軍の行動状態</span>
+						<span><span className="rounded bg-green-800 px-1.5 py-0.5 font-bold text-white">未</span> 未行動</span>
+						<span><span className="rounded bg-slate-600 px-1.5 py-0.5 font-bold text-white">済</span> 行動済み</span>
+					</div>
 					<MatchBoard
 						actionMode={actionMode}
 						disabled={isSending || !isHumanTurn}
@@ -213,10 +218,10 @@ function MatchRoute() {
 						<h2 className="font-semibold">操作</h2>
 						<fieldset aria-label="ユニットを選択" className="mt-3 flex flex-wrap gap-2">
 							{match.units
-								.filter((unit) => unit.side === "human" && !unit.isDestroyed && !unit.hasActed)
+								.filter((unit) => unit.side === "human" && !unit.isDestroyed)
 								.map((unit) => (
-									<Button key={unit.id} disabled={isSending || !isHumanTurn} onClick={() => selectUnit(unit.id)} variant={selectedUnitId === unit.id ? "default" : "outline"}>
-										{unit.kind === "fighter" ? "戦闘機" : "戦艦"} ({unit.position.x}, {unit.position.y}) HP {unit.hp}
+									<Button key={unit.id} disabled={isSending || !isHumanTurn || unit.hasActed} onClick={() => selectUnit(unit.id)} variant={selectedUnitId === unit.id ? "default" : "outline"}>
+										{unit.kind === "fighter" ? "戦闘機" : "戦艦"} ({unit.position.x}, {unit.position.y}) HP {unit.hp} · {unit.hasActed ? "行動済み" : "未行動"}
 									</Button>
 								))}
 						</fieldset>

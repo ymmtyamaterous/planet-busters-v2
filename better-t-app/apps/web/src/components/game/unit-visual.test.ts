@@ -60,4 +60,47 @@ describe("drawUnit", () => {
 		drawUnit(scene, { kind: "fighter", side: "cpu" }, { x: 100, y: 200 });
 		expect(text).not.toHaveBeenCalled();
 	});
+
+	test("行動状態を文字と色で区別し、HPと選択枠を維持する", () => {
+		const { scene, text, setStrokeStyle } = createScene();
+		drawUnit(
+			scene,
+			{ kind: "fighter", side: "human" },
+			{ x: 95, y: 165 },
+			{ selected: true, hp: 5, hasActed: false },
+		);
+		expect(setStrokeStyle).toHaveBeenCalledWith(4, 0xfacc15);
+		expect(text).toHaveBeenCalledWith(95, 165, "機\n5", expect.any(Object));
+		expect(text).toHaveBeenCalledWith(95, 190, "未", expect.objectContaining({
+			backgroundColor: "#166534",
+			color: "#ffffff",
+		}));
+
+		text.mockClear();
+		drawUnit(
+			scene,
+			{ kind: "battleship", side: "human" },
+			{ x: 100, y: 200 },
+			{ hp: 12, hasActed: true },
+		);
+		expect(text).toHaveBeenCalledWith(100, 225, "済", expect.objectContaining({
+			backgroundColor: "#475569",
+			color: "#ffffff",
+		}));
+	});
+
+	test("敵ユニットには行動状態を表示しない", () => {
+		const { scene, text } = createScene();
+		for (const hasActed of [true, false]) {
+			text.mockClear();
+			drawUnit(
+				scene,
+				{ kind: "fighter", side: "cpu" },
+				{ x: 100, y: 200 },
+				{ hp: 5, hasActed },
+			);
+			expect(text).toHaveBeenCalledTimes(1);
+			expect(text).toHaveBeenCalledWith(100, 200, "機\n5", expect.any(Object));
+		}
+	});
 });
