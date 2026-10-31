@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AttackEffect } from "./attack-effect";
-import { type AttackEffectData, deliverAttackEffect, isEffectMessage, openAttackWindow } from "./attack-effect-data";
+import { type AttackEffectData, attackWindowFeatures, deliverAttackEffect, isEffectMessage, openAttackWindow } from "./attack-effect-data";
 
 type Session = {
 	popup: Window | null;
@@ -58,7 +58,7 @@ export function useAttackEffect(onFinished: () => Promise<void>) {
 	const begin = () => {
 		if (sessionRef.current) return false;
 		const token = Array.from(crypto.getRandomValues(new Uint32Array(4)), (value) => value.toString(16).padStart(8, "0")).join("");
-		const popup = openAttackWindow(() => window.open("", "_blank", "popup=yes,width=620,height=520"));
+		const popup = openAttackWindow(() => window.open("", "_blank", attackWindowFeatures(window.screen)));
 		const session: Session = { popup, token, effect: null, finishing: false };
 		sessionRef.current = session;
 		setBusy(true);
