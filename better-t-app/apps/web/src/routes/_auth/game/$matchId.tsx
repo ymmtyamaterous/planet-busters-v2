@@ -23,7 +23,7 @@ import {
 	performAttack,
 	toAttackEffectData,
 } from "@/components/game/attack-effect-data";
-import { getBoardPresentation, requestMove } from "@/components/game/board-data";
+import { confirmAttack, getBoardPresentation, requestMove } from "@/components/game/board-data";
 import {
 	type BoardActionMode,
 	MatchBoard,
@@ -127,7 +127,10 @@ function MatchRoute() {
 	};
 	const attack = async (target: AttackTarget) => {
 		const unit = presentation.selectedUnit;
-		if (unit && !isSending) {
+		if (
+			unit &&
+			confirmAttack(presentation, target, isSending || !isHumanTurn, (message) => window.confirm(message))
+		) {
 			await performAttack({
 				begin: attackEffect.begin,
 				submit: () =>
@@ -233,6 +236,11 @@ function MatchRoute() {
 						{presentation.selectedUnit && actionMode !== "attack" ? (
 							<p className="mt-2 text-primary text-xs">
 								青い＋のマスをクリックして移動先を選択できます。
+							</p>
+						) : null}
+						{presentation.selectedUnit && presentation.attackTargets.length > 0 ? (
+							<p className="mt-2 text-destructive text-xs">
+								赤い×のマスをクリックして攻撃対象を選択できます。
 							</p>
 						) : null}
 						<div className="mt-4 grid grid-cols-2 gap-2">

@@ -36,11 +36,12 @@ export function getBoardAction(
 		return null;
 	const isAtPosition = (candidate: GridPosition) =>
 		candidate.x === position.x && candidate.y === position.y;
+	const target = presentation.attackTargets.find((candidate) =>
+		isAtPosition(candidate.position),
+	)?.target;
+	if (target) return { type: "attack", target };
 	if (mode === "attack") {
-		const target = presentation.attackTargets.find((candidate) =>
-			isAtPosition(candidate.position),
-		)?.target;
-		return target ? { type: "attack", target } : null;
+		return null;
 	}
 	if (presentation.reachablePositions.some(isAtPosition)) {
 		return { type: "move", destination: position };
@@ -53,6 +54,26 @@ export function getBoardAction(
 			!candidate.hasActed,
 	);
 	return unit ? { type: "select", unitId: unit.id } : null;
+}
+
+export function confirmAttack(
+	presentation: BoardPresentation,
+	target: AttackTarget,
+	disabled: boolean,
+	confirm: (message: string) => boolean,
+): boolean {
+	const unit = presentation.selectedUnit;
+	const candidate = presentation.attackTargets.find(({ target: available }) =>
+		available.type === "unit" && target.type === "unit"
+			? available.unitId === target.unitId
+			: available.type === "planet" && target.type === "planet" && available.side === target.side,
+	);
+	if (disabled || !unit || !candidate) return false;
+	const unitName = unit.kind === "battleship" ? "戦艦" : "戦闘機";
+	const targetName = target.type === "planet" ? "敵主惑星" : "敵ユニット";
+	return confirm(
+		`${unitName}で (${candidate.position.x}, ${candidate.position.y}) の${targetName}を攻撃しますか？\n攻撃すると、このターンは移動できません。`,
+	);
 }
 
 export function requestMove(

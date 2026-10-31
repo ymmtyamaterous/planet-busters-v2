@@ -4,7 +4,7 @@ import {
 	NEBULA_CROSSROADS_MAP,
 } from "@better-t-app/api/game";
 
-import { getBoardAction, getBoardPresentation, requestMove } from "./board-data";
+import { confirmAttack, getBoardAction, getBoardPresentation, requestMove } from "./board-data";
 
 const match: MatchSnapshot = {
 	id: "match-1",
@@ -91,7 +91,10 @@ describe("getBoardAction", () => {
 			type: "select",
 			unitId: "human-fighter",
 		});
-		expect(getBoardAction(match, presentation, null, { x: 4, y: 3 }, false)).toBeNull();
+		expect(getBoardAction(match, presentation, null, { x: 4, y: 3 }, false)).toEqual({
+			type: "attack",
+			target: { type: "unit", unitId: "cpu-fighter" },
+		});
 		expect(getBoardAction(match, presentation, null, { x: 3, y: 3 }, false)).toEqual({
 			type: "move",
 			destination: { x: 3, y: 3 },
@@ -106,7 +109,10 @@ describe("getBoardAction", () => {
 			type: "move",
 			destination: { x: 3, y: 3 },
 		});
-		expect(getBoardAction(match, presentation, "move", { x: 4, y: 3 }, false)).toBeNull();
+		expect(getBoardAction(match, presentation, "move", { x: 4, y: 3 }, false)).toEqual({
+			type: "attack",
+			target: { type: "unit", unitId: "cpu-fighter" },
+		});
 		expect(getBoardAction(match, presentation, "attack", { x: 4, y: 3 }, false)).toEqual({
 			type: "attack",
 			target: { type: "unit", unitId: "cpu-fighter" },
@@ -114,10 +120,56 @@ describe("getBoardAction", () => {
 		expect(getBoardAction(match, presentation, "attack", { x: 3, y: 3 }, false)).toBeNull();
 	});
 
+	test("表示された敵主惑星も直接選択できる", () => {
+		const planetPresentation = {
+			...presentation,
+			attackTargets: [{ target: { type: "planet" as const, side: "cpu" as const }, position: { x: 11, y: 4 } }],
+		};
+		expect(getBoardAction(match, planetPresentation, null, { x: 11, y: 4 }, false)).toEqual({
+			type: "attack",
+			target: { type: "planet", side: "cpu" },
+		});
+		expect(getBoardAction(match, planetPresentation, null, { x: 11, y: 4 }, true)).toBeNull();
+	});
+
 	test("操作無効時、CPUターン、対局終了後は操作できない", () => {
 		expect(getBoardAction(match, presentation, null, { x: 2, y: 3 }, true)).toBeNull();
 		expect(getBoardAction({ ...match, turnSide: "cpu" }, presentation, "move", { x: 3, y: 3 }, false)).toBeNull();
 		expect(getBoardAction({ ...match, status: "completed" }, presentation, "attack", { x: 4, y: 3 }, false)).toBeNull();
+	});
+});
+
+describe("confirmAttack", () => {
+	const presentation = getBoardPresentation(match, "human-fighter");
+	const target = { type: "unit" as const, unitId: "cpu-fighter" };
+
+	test("有効な対象を確認し、承認時のみ攻撃を許可する", () => {
+		const confirm = mock((_message: string) => true);
+		expect(confirmAttack(presentation, target, false, confirm)).toBe(true);
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(confirm.mock.calls[0]?.[0]).toContain("戦闘機で (4, 3) の敵ユニット");
+		expect(confirmAttack(presentation, target, false, () => false)).toBe(false);
+	});
+
+	test("無効な状態や対象では確認せず攻撃を許可しない", () => {
+		const confirm = mock(() => true);
+		expect(confirmAttack(presentation, target, true, confirm)).toBe(false);
+		expect(confirmAttack(getBoardPresentation(match, null), target, false, confirm)).toBe(false);
+		expect(confirmAttack(presentation, { type: "unit", unitId: "other" }, false, confirm)).toBe(false);
+		expect(confirmAttack(presentation, { type: "planet", side: "cpu" }, false, confirm)).toBe(false);
+		expect(confirm).not.toHaveBeenCalled();
+	});
+
+	test("敵主惑星を対象とした確認を表示する", () => {
+		const target = { type: "planet" as const, side: "cpu" as const };
+		const planetPresentation = {
+			...presentation,
+			attackTargets: [{ target, position: { x: 11, y: 4 } }],
+		};
+		const confirm = mock((_message: string) => true);
+		expect(confirmAttack(planetPresentation, target, false, confirm)).toBe(true);
+		expect(confirm.mock.calls[0]?.[0]).toContain("(11, 4) の敵主惑星");
+		expect(confirmAttack(planetPresentation, { type: "planet", side: "human" }, false, confirm)).toBe(false);
 	});
 });
 
