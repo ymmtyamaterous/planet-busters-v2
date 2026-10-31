@@ -1,3 +1,4 @@
+// Ver1 の CPU 判断。新しいルールは別モジュールとして追加する。
 import {
 	canAttackTarget,
 	getPlanetBySide,

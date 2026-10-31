@@ -20,6 +20,8 @@ beforeEach(async () => {
 			turn_side TEXT NOT NULL DEFAULT 'human',
 			turn_number INTEGER NOT NULL DEFAULT 1,
 			map_key TEXT NOT NULL,
+			rules_version TEXT NOT NULL DEFAULT 'v1',
+			map_version TEXT NOT NULL DEFAULT 'v1',
 			map_seed INTEGER,
 			version INTEGER NOT NULL DEFAULT 1,
 			winner_side TEXT,
@@ -83,6 +85,8 @@ describe("game ORPC API", () => {
 			status: "active",
 			turnSide: "human",
 			turnNumber: 1,
+			rulesVersion: "v1",
+			mapVersion: "v1",
 			version: 1,
 		});
 		expect(match.planets).toHaveLength(2);
@@ -130,6 +134,14 @@ describe("game ORPC API", () => {
 				action: { type: "wait", unitId: unit.id },
 			}),
 		).rejects.toBeInstanceOf(ORPCError);
+	});
+
+	test.each(["rules_version", "map_version"])("未対応の %s は推測して読み込まない", async (column) => {
+		const client = createGameClient("user-1");
+		const match = await client.create({});
+		await db.$client.execute({ sql: `UPDATE game_match SET ${column} = ? WHERE id = ?`, args: ["future", match.id] });
+		await expect(client.get({ matchId: match.id })).rejects.toMatchObject({ data: { code: "UNSUPPORTED_GAME_VERSION" } });
+		await expect(client.submit({ matchId: match.id, expectedVersion: match.version, action: { type: "endTurn" } })).rejects.toMatchObject({ data: { code: "UNSUPPORTED_GAME_VERSION" } });
 	});
 
 	test("ターン終了時にCPUの全行動をサーバーで確定する", async () => {

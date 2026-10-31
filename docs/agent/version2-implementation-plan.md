@@ -1,7 +1,7 @@
 # Planet Busters Ver2 実装計画
 
 - 作成日: 2026-10-31
-- 状態: 提案・未着手。数値や画面仕様は各フェーズ着手時に確定する。
+- 状態: フェーズ0の実装・ローカル検証完了。実環境でのリリース前確認は [フェーズ0検証記録](phase0-verification.md) を参照。数値や画面仕様は各フェーズ着手時に確定する。
 - 対象: Ver1 の CPU 対戦を拡張し、繰り返し遊べるゲームと招待制の人対人対戦を提供する。
 - 関連資料: [Ver1 仕様・実装計画](strategy-space-battle-spec-and-plan.md)、[Ver1 検証記録](phase5-release-verification.md)
 

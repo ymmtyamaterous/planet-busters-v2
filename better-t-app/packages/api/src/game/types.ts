@@ -73,6 +73,9 @@ export type MatchSnapshot = Readonly<{
 	turnSide: GameSide;
 	turnNumber: number;
 	mapKey: string;
+	// 省略時は、既存のドメイン呼び出しとの互換性のため Ver1 を使用する。
+	rulesVersion?: string;
+	mapVersion?: string;
 	version: number;
 	winnerSide: GameSide | null;
 	planets: readonly PlanetSnapshot[];

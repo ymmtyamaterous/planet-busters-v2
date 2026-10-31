@@ -25,12 +25,12 @@ export type SimulationResult = Readonly<{
 	events: readonly SimulationEvent[];
 }>;
 
-export function createSimulationState(map: MapDefinition): MatchSnapshot {
+export function createSimulationState(map: MapDefinition, firstSide: GameSide = "human"): MatchSnapshot {
 	return {
 		id: "simulation",
 		status: "active",
 		mode: "cpu",
-		turnSide: "human",
+		turnSide: firstSide,
 		turnNumber: 1,
 		mapKey: map.key,
 		version: 1,
@@ -48,6 +48,20 @@ export function createSimulationState(map: MapDefinition): MatchSnapshot {
 			isDestroyed: false,
 		})),
 		recentActions: [],
+	};
+}
+
+// Swap the ownership of the physical starting positions, not the terrain.
+export function swapStartingSides(map: MapDefinition): MapDefinition {
+	const opposite = (side: GameSide): GameSide => side === "human" ? "cpu" : "human";
+	return {
+		...map,
+		planets: { human: map.planets.cpu, cpu: map.planets.human },
+		initialUnits: map.initialUnits.map((unit) => ({
+			...unit,
+			side: opposite(unit.side),
+			id: `${opposite(unit.side)}-${unit.id}`,
+		})),
 	};
 }
 
@@ -97,13 +111,17 @@ export function simulateMatch(options: {
 	map?: MapDefinition;
 	initialState?: MatchSnapshot;
 	maxActions?: number;
+	firstSide?: GameSide;
 }): SimulationResult {
 	const map = options.map ?? NEBULA_CROSSROADS_MAP;
 	const maxActions = options.maxActions ?? 2000;
 	if (!Number.isSafeInteger(maxActions) || maxActions < 1) {
 		throw new RangeError("maxActions は正の整数である必要があります");
 	}
-	let state = options.initialState ?? createSimulationState(map);
+	if (options.initialState && options.firstSide !== undefined) {
+		throw new Error("initialState と firstSide は同時に指定できません");
+	}
+	let state = options.initialState ?? createSimulationState(map, options.firstSide);
 	const initialUnreachableSides = (["human", "cpu"] as const).filter(
 		(side) => !canEventuallyAttackPlanet(state, map, side),
 	);

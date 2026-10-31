@@ -1,3 +1,4 @@
+// Ver1 の実装。新しいルールはこの実装を変更せず別モジュールに追加する。
 import type { MapDefinition } from "./map";
 import {
 	BASE_ACCURACY,

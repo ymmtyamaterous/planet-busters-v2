@@ -18,6 +18,7 @@
 
 ## 技術スタック概要
 - フルスタック: TypeScript,tanstack-router,hono,bun,drizzle,orpc,better-auth,turborepo,biome,lefthook
+- ブラウザ E2E: Playwright（専用ポートと分離されたテスト用DBを使用）
 - データベース: SQLite
 
 ## 実装ガイド

@@ -11,6 +11,8 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      VITE_SERVER_URL: http://127.0.0.1:3402
     defaults:
       run:
         working-directory: better-t-app
@@ -24,3 +26,10 @@ jobs:
       - run: bun run check-types
       - run: bun test
       - run: bun run simulate 100 1
+      - run: bun run simulate:balance 25 1
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
+      - run: bun run build
+        env:
+          VITE_SERVER_URL: http://127.0.0.1:3402
+      - run: bun run test:e2e:built

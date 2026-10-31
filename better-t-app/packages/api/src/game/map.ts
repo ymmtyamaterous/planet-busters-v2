@@ -1,3 +1,4 @@
+// Ver1 のマップ定義。新しい版は既存定義を変更せず追加する。
 import type { GameSide, GridPosition, GridSize, UnitKind } from "./types";
 
 export const DEFAULT_MAP_KEY = "nebula-crossroads";

@@ -8,6 +8,7 @@ import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
+import { serveStatic } from "hono/bun";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
@@ -82,8 +83,21 @@ app.use("/*", async (c, next) => {
   await next();
 });
 
-app.get("/", (c) => {
-  return c.text("OK");
-});
+// Only the built server contains the bundled web app. Never fall back to the
+// SPA for missing assets or API routes, so missing files remain real 404s.
+const publicRoot = fileURLToPath(new URL("./dist", import.meta.url));
+if (existsSync(publicRoot)) {
+  app.get("/*", serveStatic({ root: publicRoot }));
+  const index = serveStatic({ root: publicRoot, path: "index.html" });
+  app.get("/*", async (c, next) => {
+    const path = c.req.path;
+    if (/^\/(?:api|api-reference|rpc)(?:\/|$)/.test(path) || /\.[^/]+$/.test(path)) {
+      return next();
+    }
+    return index(c, next);
+  });
+} else {
+  app.get("/", (c) => c.text("OK"));
+}
 
 export default app;

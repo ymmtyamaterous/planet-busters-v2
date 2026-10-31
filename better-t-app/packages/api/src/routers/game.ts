@@ -11,17 +11,18 @@ import { z } from "zod";
 
 import {
 	type AttackResolution,
-	applyAction,
-	chooseCpuAction,
+	CURRENT_MAP_VERSION,
+	CURRENT_RULES_VERSION,
 	DEFAULT_MAP_KEY,
 	type DomainGameAction,
-	GAME_MAPS,
 	type GameActionSnapshot,
 	type GameSide,
+	type MapDefinition,
 	type MatchSnapshot,
-	PLANET_HP,
-	startTurn,
-	UNIT_STATS,
+	resolveMap,
+	resolveRules,
+	type RulesDefinition,
+	UnsupportedGameDefinitionError,
 } from "../game";
 import { protectedProcedure } from "../index";
 
@@ -66,13 +67,14 @@ export const gameRouter = {
 	createCpuMatch: protectedProcedure
 		.input(createCpuMatchInput)
 		.handler(async ({ context, input }) => {
-			const map = getMap(input.mapKey ?? DEFAULT_MAP_KEY);
+			const map = getMap(input.mapKey ?? DEFAULT_MAP_KEY, CURRENT_MAP_VERSION);
+			const rules = getRules(CURRENT_RULES_VERSION);
 			const matchId = crypto.randomUUID();
 			const humanParticipantId = crypto.randomUUID();
 			const cpuParticipantId = crypto.randomUUID();
 
 			await context.db.transaction(async (tx) => {
-				await tx.insert(gameMatch).values({ id: matchId, mapKey: map.key });
+				await tx.insert(gameMatch).values({ id: matchId, mapKey: map.key, rulesVersion: CURRENT_RULES_VERSION, mapVersion: CURRENT_MAP_VERSION });
 				await tx.insert(gameParticipant).values([
 					{
 						id: humanParticipantId,
@@ -81,7 +83,7 @@ export const gameRouter = {
 						userId: context.session.user.id,
 						planetX: map.planets.human.x,
 						planetY: map.planets.human.y,
-						planetHp: PLANET_HP,
+						planetHp: rules.planetHp,
 					},
 					{
 						id: cpuParticipantId,
@@ -89,7 +91,7 @@ export const gameRouter = {
 						side: "cpu",
 						planetX: map.planets.cpu.x,
 						planetY: map.planets.cpu.y,
-						planetHp: PLANET_HP,
+						planetHp: rules.planetHp,
 					},
 				]);
 				await tx.insert(gameUnit).values(
@@ -101,7 +103,7 @@ export const gameRouter = {
 						kind: unit.kind,
 						x: unit.position.x,
 						y: unit.position.y,
-						hp: UNIT_STATS[unit.kind].hp,
+						hp: rules.unitStats[unit.kind].hp,
 					})),
 				);
 			});
@@ -154,10 +156,11 @@ export const gameRouter = {
 				throw gameError("NOT_YOUR_TURN", "現在はCPUのターンです");
 			}
 
-			const map = getMap(snapshot.mapKey);
-			let result: ReturnType<typeof applyAction>;
+			const map = getMap(snapshot.mapKey, snapshot.mapVersion);
+			const rules = getRules(snapshot.rulesVersion);
+			let result: ReturnType<RulesDefinition["applyAction"]>;
 			try {
-				result = applyAction(snapshot, map, input.action, secureRandom);
+				result = rules.applyAction(snapshot, map, input.action, secureRandom);
 			} catch (error) {
 				throw gameError(
 					"INVALID_ACTION",
@@ -176,7 +179,7 @@ export const gameRouter = {
 						.filter((unit) => unit.side === "human" && !unit.isDestroyed)
 						.every((unit) => unit.hasActed))
 			) {
-				finalState = runCpuTurn(finalState, map, actionRecords);
+				finalState = runCpuTurn(finalState, map, rules, actionRecords);
 			}
 
 			await persistState(context.db, snapshot, finalState, actionRecords);
@@ -231,17 +234,33 @@ type ActionRecord = Readonly<{
 	payload: Record<string, unknown>;
 }>;
 
-const secureRandom = {
+export const secureRandom = {
 	nextInt: (maxExclusive: number) => {
 		const values = crypto.getRandomValues(new Uint32Array(1));
 		return (values[0] ?? 0) % maxExclusive;
 	},
 };
 
-function getMap(key: string) {
-	const map = GAME_MAPS.find((candidate) => candidate.key === key);
-	if (!map) throw gameError("INVALID_ACTION", "指定されたマップは存在しません");
-	return map;
+function getMap(key: string, version?: string): MapDefinition {
+	try {
+		return resolveMap(key, version);
+	} catch (error) {
+		if (error instanceof UnsupportedGameDefinitionError) {
+			throw gameError("UNSUPPORTED_GAME_VERSION", error.message);
+		}
+		throw gameError("INVALID_ACTION", "指定されたマップは存在しません");
+	}
+}
+
+function getRules(version?: string): RulesDefinition {
+	try {
+		return resolveRules(version);
+	} catch (error) {
+		if (error instanceof UnsupportedGameDefinitionError) {
+			throw gameError("UNSUPPORTED_GAME_VERSION", error.message);
+		}
+		throw error;
+	}
 }
 
 async function loadOwnedMatch(
@@ -265,6 +284,8 @@ async function loadOwnedMatch(
 	if (!human || human.userId !== userId) {
 		throw gameError("MATCH_FORBIDDEN", "この対局を操作する権限がありません");
 	}
+	getRules(match.rulesVersion);
+	getMap(match.mapKey, match.mapVersion);
 	const [units, actions] = await Promise.all([
 		db.select().from(gameUnit).where(eq(gameUnit.matchId, matchId)),
 		db
@@ -290,6 +311,8 @@ function toSnapshot(
 		turnSide: match.turnSide,
 		turnNumber: match.turnNumber,
 		mapKey: match.mapKey,
+		rulesVersion: match.rulesVersion,
+		mapVersion: match.mapVersion,
 		version: match.version,
 		winnerSide: match.winnerSide,
 		planets: participants.map((participant) => ({
@@ -332,17 +355,18 @@ function toActionSnapshot(action: PersistedAction): GameActionSnapshot {
 
 function runCpuTurn(
 	initialState: MatchSnapshot,
-	map: (typeof GAME_MAPS)[number],
+	map: MapDefinition,
+	rules: RulesDefinition,
 	actionRecords: ActionRecord[],
 ): MatchSnapshot {
 	let state =
 		initialState.turnSide === "cpu"
 			? initialState
-			: startTurn(initialState, "cpu");
+			: rules.startTurn(initialState, "cpu");
 	while (state.status === "active") {
-		const action = chooseCpuAction(state, map);
+		const action = rules.chooseCpuAction(state, map);
 		if (!action) break;
-		const result = applyAction(state, map, action, secureRandom);
+		const result = rules.applyAction(state, map, action, secureRandom);
 		actionRecords.push(toActionRecord(state, action, result.attackResult));
 		state = result.state;
 		if (action.type === "endTurn") return state;

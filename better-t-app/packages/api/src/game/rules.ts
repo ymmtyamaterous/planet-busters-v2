@@ -1,3 +1,4 @@
+// Ver1 の能力値。既存対局のため変更せず、新しい版は別定義にする。
 import type { UnitKind, UnitStats } from "./types";
 
 export const PLANET_HP = 30;

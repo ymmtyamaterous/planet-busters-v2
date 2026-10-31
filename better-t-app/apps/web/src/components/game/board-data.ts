@@ -1,15 +1,15 @@
 import {
 	type AttackTarget,
-	canAttackTarget,
-	GAME_MAPS,
 	type GameUnitSnapshot,
 	type GridPosition,
-	getReachablePositions,
+	type MapDefinition,
 	type MatchSnapshot,
+	resolveMap,
+	resolveRules,
 } from "@better-t-app/api/game";
 
 export type BoardPresentation = Readonly<{
-	map: (typeof GAME_MAPS)[number];
+	map: MapDefinition;
 	selectedUnit: GameUnitSnapshot | null;
 	reachablePositions: readonly GridPosition[];
 	attackTargets: readonly Readonly<{
@@ -105,8 +105,8 @@ export function getBoardPresentation(
 	match: MatchSnapshot,
 	selectedUnitId: string | null,
 ): BoardPresentation {
-	const map = GAME_MAPS.find((candidate) => candidate.key === match.mapKey);
-	if (!map) throw new Error("対局のマップが見つかりません");
+	const map = resolveMap(match.mapKey, match.mapVersion);
+	const rules = resolveRules(match.rulesVersion);
 	const selectedUnit =
 		match.units.find(
 			(unit) =>
@@ -130,7 +130,7 @@ export function getBoardPresentation(
 			.filter(
 				(unit) =>
 					!unit.isDestroyed &&
-					canAttackTarget(match, map, selectedUnit, {
+					rules.canAttackTarget(match, map, selectedUnit, {
 						type: "unit",
 						unitId: unit.id,
 					}),
@@ -141,7 +141,7 @@ export function getBoardPresentation(
 			})),
 		...match.planets
 			.filter((planet) =>
-				canAttackTarget(match, map, selectedUnit, {
+				rules.canAttackTarget(match, map, selectedUnit, {
 					type: "planet",
 					side: planet.side,
 				}),
@@ -154,7 +154,7 @@ export function getBoardPresentation(
 	return {
 		map,
 		selectedUnit,
-		reachablePositions: getReachablePositions(match, map, selectedUnit),
+		reachablePositions: rules.getReachablePositions(match, map, selectedUnit),
 		attackTargets,
 	};
 }

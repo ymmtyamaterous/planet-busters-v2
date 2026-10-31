@@ -3,7 +3,7 @@ import type {
 	DomainGameAction,
 	GridPosition,
 } from "@better-t-app/api/game";
-import { UNIT_STATS } from "@better-t-app/api/game";
+import { resolveRules } from "@better-t-app/api/game";
 import { Button } from "@better-t-app/ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -103,6 +103,7 @@ function MatchRoute() {
 		return <MatchStatus message="対局を読み込めませんでした。" />;
 	const match = matchQuery.data;
 	const presentation = getBoardPresentation(match, selectedUnitId);
+	const unitStats = resolveRules(match.rulesVersion).unitStats;
 	const isHumanTurn = match.status === "active" && match.turnSide === "human";
 	const isSending =
 		submitAction.isPending ||
@@ -201,7 +202,7 @@ function MatchRoute() {
 
 			<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
 				<section className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-					<div aria-label="ユニットの行動状態" className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-xs">
+					<div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-xs">
 						<span className="font-medium">自軍の行動状態</span>
 						<span><span className="rounded bg-green-800 px-1.5 py-0.5 font-bold text-white">未</span> 未行動</span>
 						<span><span className="rounded bg-slate-600 px-1.5 py-0.5 font-bold text-white">済</span> 行動済み</span>
@@ -231,7 +232,7 @@ function MatchRoute() {
 						</fieldset>
 						<p className="mt-1 text-muted-foreground text-sm">
 							{presentation.selectedUnit
-								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp} / 移動 ${UNIT_STATS[presentation.selectedUnit.kind].movement}マス / 射程 ${UNIT_STATS[presentation.selectedUnit.kind].attackRange}マス / 攻撃力 ${UNIT_STATS[presentation.selectedUnit.kind].attack}`
+								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp} / 移動 ${unitStats[presentation.selectedUnit.kind].movement}マス / 射程 ${unitStats[presentation.selectedUnit.kind].attackRange}マス / 攻撃力 ${unitStats[presentation.selectedUnit.kind].attack}`
 								: "自軍の未行動ユニットを選択してください。"}
 						</p>
 						{presentation.selectedUnit && actionMode !== "attack" ? (

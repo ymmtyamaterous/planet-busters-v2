@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  cacheDir: process.env.NODE_ENV === "test" ? "node_modules/.vite-e2e" : undefined,
   server: {
     port: 3001,
     host: true,
@@ -18,6 +19,7 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+      enableRouteGeneration: process.env.NODE_ENV !== "test",
     }),
     react(),
   ],

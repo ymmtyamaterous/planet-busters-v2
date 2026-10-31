@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { chooseCpuAction } from "./cpu";
 import { NEBULA_CROSSROADS_MAP } from "./map";
-import { canEventuallyAttackPlanet, createSimulationState, seededRandom, simulateMatch } from "./simulator";
+import { canEventuallyAttackPlanet, createSimulationState, seededRandom, simulateMatch, swapStartingSides } from "./simulator";
 
 describe("CPU 対戦シミュレーション", () => {
 	test("同じシードでは同じ行動と結果になる", () => {
@@ -47,5 +47,21 @@ describe("CPU 対戦シミュレーション", () => {
 	test("行動回数上限で停止し、不正な上限を拒否する", () => {
 		expect(simulateMatch({ seed: 1, maxActions: 1 }).reason).toBe("action_limit");
 		expect(() => simulateMatch({ seed: 1, maxActions: 0 })).toThrow();
+	});
+
+	test("先手と物理的な初期配置を独立して入れ替えられる", () => {
+		const map = swapStartingSides(NEBULA_CROSSROADS_MAP);
+		expect(map.asteroids).toEqual(NEBULA_CROSSROADS_MAP.asteroids);
+		expect(map.planets.human).toEqual(NEBULA_CROSSROADS_MAP.planets.cpu);
+		expect(map.initialUnits.filter((unit) => unit.side === "human").map((unit) => unit.position)).toEqual(
+			NEBULA_CROSSROADS_MAP.initialUnits.filter((unit) => unit.side === "cpu").map((unit) => unit.position),
+		);
+		for (const firstSide of ["human", "cpu"] as const) {
+			const result = simulateMatch({ seed: 42, map, firstSide, maxActions: 1 });
+			expect(result.events[0]?.side).toBe(firstSide);
+			expect(result.initialUnreachableSides).toEqual([]);
+			expect(result).toEqual(simulateMatch({ seed: 42, map, firstSide, maxActions: 1 }));
+		}
+		expect(() => simulateMatch({ seed: 1, initialState: createSimulationState(map), firstSide: "cpu" })).toThrow();
 	});
 });

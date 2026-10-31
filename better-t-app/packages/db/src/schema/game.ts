@@ -29,6 +29,8 @@ export const gameMatch = sqliteTable(
 			.default("human"),
 		turnNumber: integer("turn_number").notNull().default(1),
 		mapKey: text("map_key").notNull(),
+		rulesVersion: text("rules_version").notNull().default("v1"),
+		mapVersion: text("map_version").notNull().default("v1"),
 		mapSeed: integer("map_seed"),
 		version: integer("version").notNull().default(1),
 		winnerSide: text("winner_side", { enum: ["human", "cpu"] }),
