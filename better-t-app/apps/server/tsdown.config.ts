@@ -5,6 +5,7 @@ export default defineConfig({
   format: "esm",
   outDir: "./dist",
   clean: true,
+  copy: [{ from: "../../packages/db/src/migrations", to: "./dist" }],
   deps: {
     alwaysBundle: [/@better-t-app\/.*/],
   },
