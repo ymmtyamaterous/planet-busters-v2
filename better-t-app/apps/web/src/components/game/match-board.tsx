@@ -10,6 +10,7 @@ import {
 	getBoardAction,
 	getBoardPresentation,
 } from "./board-data";
+import { drawUnit } from "./unit-visual";
 
 const CELL_SIZE = 70;
 const BOARD_PADDING = 60;
@@ -130,34 +131,10 @@ export function MatchBoard({
 						(candidate) => !candidate.isDestroyed,
 					)) {
 						const point = centerOf(unit.position);
-						const color = unit.side === "human" ? 0x80c7ff : 0xff9aa5;
-						const isSelected = unit.id === selectedUnit?.id;
-						unit.kind === "battleship"
-								? this.add
-										.rectangle(point.x, point.y, 38, 24, color)
-										.setStrokeStyle(
-											isSelected ? 4 : 2,
-											isSelected ? 0xfacc15 : 0xffffff,
-										)
-								: this.add
-										.triangle(point.x, point.y, 0, -17, 15, 15, -15, 15, color)
-										.setStrokeStyle(
-											isSelected ? 4 : 2,
-											isSelected ? 0xfacc15 : 0xffffff,
-										);
-						this.add
-							.text(
-								point.x,
-								point.y,
-								`${unit.kind === "battleship" ? "戦" : "戦"}\n${unit.hp}`,
-								{
-									align: "center",
-									color: "#101827",
-									fontSize: "11px",
-									fontStyle: "bold",
-								},
-							)
-							.setOrigin(0.5);
+						drawUnit(this, unit, point, {
+							selected: unit.id === selectedUnit?.id,
+							hp: unit.hp,
+						});
 					}
 					for (let y = 0; y < map.size.height; y += 1) {
 						for (let x = 0; x < map.size.width; x += 1) {

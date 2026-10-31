@@ -1,6 +1,8 @@
 import { NEBULA_CROSSROADS_MAP } from "@better-t-app/api/game";
 import { useEffect, useRef } from "react";
 
+import { drawUnit } from "./unit-visual";
+
 const CELL_SIZE = 70;
 const BOARD_PADDING = 60;
 
@@ -70,26 +72,7 @@ export function StrategyGameBoard() {
 
 					for (const unit of NEBULA_CROSSROADS_MAP.initialUnits) {
 						const position = centerOf(unit.position);
-						const color = unit.side === "human" ? 0x80c7ff : 0xff9aa5;
-						if (unit.kind === "battleship") {
-							this.add
-								.rectangle(position.x, position.y, 38, 24, color)
-								.setStrokeStyle(2, 0xffffff);
-						} else {
-							this.add
-								.triangle(
-									position.x,
-									position.y,
-									0,
-									-17,
-									15,
-									15,
-									-15,
-									15,
-									color,
-								)
-								.setStrokeStyle(2, 0xffffff);
-						}
+						drawUnit(this, unit, position);
 					}
 				}
 			}
