@@ -28,6 +28,7 @@ import {
 	type BoardActionMode,
 	MatchBoard,
 } from "@/components/game/match-board";
+import { MatchResult } from "@/components/game/match-result";
 import { recoverMutationFailure } from "@/components/game/mutation-recovery";
 import { UnitGuide } from "@/components/game/unit-guide";
 import { useAttackEffect } from "@/components/game/use-attack-effect";
@@ -172,7 +173,7 @@ function MatchRoute() {
 			</header>
 
 			{match.status === "completed" ? (
-				<ResultBanner winnerSide={match.winnerSide} />
+				<MatchResult key={match.id} ready={!attackEffect.busy} turnNumber={match.turnNumber} winnerSide={match.winnerSide} />
 			) : null}
 			{!isHumanTurn && match.status === "active" ? (
 				<div className="flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-100/30 px-4 py-3 text-sm">
@@ -401,17 +402,3 @@ function ActionLog({
 	);
 }
 
-function ResultBanner({ winnerSide }: { winnerSide: "human" | "cpu" | null }) {
-	return (
-		<section className="rounded-xl border border-primary/40 bg-primary/10 px-5 py-4">
-			<h2 className="font-bold text-xl">
-				{winnerSide === "human" ? "勝利！" : "敗北"}
-			</h2>
-			<p className="mt-1 text-sm">
-				{winnerSide === "human"
-					? "敵主惑星を撃破しました。"
-					: "CPU 艦隊に敗北しました。"}
-			</p>
-		</section>
-	);
-}
