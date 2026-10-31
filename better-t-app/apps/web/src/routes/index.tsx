@@ -1,66 +1,84 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, Crosshair, RotateCcw, Swords } from "lucide-react";
 
 import { StrategyGameBoard } from "@/components/game/strategy-game-board";
-import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
 });
 
 function HomeComponent() {
-	const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-
 	return (
-		<main className="mx-auto flex w-full max-w-6xl flex-col gap-6 overflow-y-auto px-4 py-8 sm:px-6">
-			<header className="space-y-2">
-				<p className="font-semibold text-primary text-xs tracking-[0.28em]">
-					PLANET BUSTERS · WEB
-				</p>
-				<h1 className="font-bold text-3xl tracking-tight sm:text-4xl">
-					戦略スペースバトル
-				</h1>
-				<p className="max-w-2xl text-muted-foreground text-sm sm:text-base">
-					フェーズ 0
-					の固定マッププレビューです。盤面と初期配置は共有ゲーム定義から描画しています。
-				</p>
-			</header>
-
-			<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-				<section className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-					<div className="min-h-64 w-full">
+		<main className="w-full overflow-y-auto">
+			<div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 sm:py-16">
+				<section className="grid items-center gap-8 lg:grid-cols-[1fr_0.85fr]">
+					<div className="space-y-6">
+						<p className="font-semibold text-primary text-xs tracking-[0.3em]">
+							PLANET BUSTERS
+						</p>
+						<h1 className="font-bold text-4xl tracking-tight sm:text-5xl">
+							艦隊を率いて、<br />
+							星を守れ。
+						</h1>
+						<p className="max-w-lg text-muted-foreground leading-relaxed">
+							戦艦と戦闘機を指揮するターン制の戦略スペースバトル。
+							自分の主惑星を守りながら、CPU の主惑星を目指しましょう。
+						</p>
+						<div className="flex flex-wrap items-center gap-4">
+							<Link
+								className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 font-semibold text-primary-foreground text-sm transition-colors hover:bg-primary/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+								to="/dashboard"
+							>
+								<Swords aria-hidden="true" className="size-4" />
+								ゲームを始める
+								<ArrowRight aria-hidden="true" className="size-4" />
+							</Link>
+							<p className="text-muted-foreground text-xs">
+								初めての方はアカウント登録が必要です
+							</p>
+						</div>
+					</div>
+					<aside className="rounded-xl border bg-card p-6 shadow-sm sm:p-8">
+						<p className="font-semibold text-muted-foreground text-xs tracking-[0.2em]">
+							HOW TO PLAY
+						</p>
+						<h2 className="mt-3 font-semibold text-xl">対局までの流れ</h2>
+						<ol className="mt-5 space-y-4 text-sm">
+							<li className="flex gap-3">
+								<span className="font-semibold text-primary">01</span>
+								<span>登録またはログインする</span>
+							</li>
+							<li className="flex gap-3">
+								<span className="font-semibold text-primary">02</span>
+								<span>司令室で「CPU 戦を開始」を選ぶ</span>
+							</li>
+							<li className="flex gap-3">
+								<span className="font-semibold text-primary">03</span>
+								<span>艦隊を動かし、敵の主惑星を撃破する</span>
+							</li>
+						</ol>
+						<p className="mt-6 flex items-start gap-2 border-t pt-4 text-muted-foreground text-xs leading-relaxed">
+							<RotateCcw aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+							進行中の対局は司令室から再開できます。
+						</p>
+					</aside>
+				</section>
+				<section className="space-y-4">
+					<div className="flex flex-wrap items-end justify-between gap-3">
+						<div>
+							<p className="flex items-center gap-2 font-semibold text-primary text-xs tracking-[0.2em]">
+								<Crosshair aria-hidden="true" className="size-4" /> MAP PREVIEW
+							</p>
+							<h2 className="mt-2 font-semibold text-2xl">星雲の交差点</h2>
+						</div>
+						<p className="max-w-lg text-muted-foreground text-sm leading-relaxed">
+							初期配置のプレビューです。ここでは操作できません。青がプレイヤー、赤が CPU、丸が主惑星、四角が戦艦、三角が戦闘機です。
+						</p>
+					</div>
+					<div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
 						<StrategyGameBoard />
 					</div>
 				</section>
-
-				<aside className="flex flex-col gap-4">
-					<section className="rounded-xl border bg-card p-5">
-						<p className="mb-2 font-semibold text-muted-foreground text-xs tracking-widest">
-							MAP LEGEND
-						</p>
-						<h2 className="font-semibold">初期配置</h2>
-						<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-							青は人間陣営、赤は CPU
-							陣営です。丸は主惑星、四角は戦艦、三角は戦闘機を表します。
-						</p>
-					</section>
-
-					<section className="rounded-xl border bg-card p-5">
-						<h2 className="mb-3 font-semibold">API Status</h2>
-						<div className="flex items-center gap-2">
-							<div
-								className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-							/>
-							<span className="text-muted-foreground text-sm">
-								{healthCheck.isLoading
-									? "Checking..."
-									: healthCheck.data
-										? "Connected"
-										: "Disconnected"}
-							</span>
-						</div>
-					</section>
-				</aside>
 			</div>
 		</main>
 	);
