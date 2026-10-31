@@ -3,6 +3,7 @@ import type {
 	DomainGameAction,
 	GridPosition,
 } from "@better-t-app/api/game";
+import { UNIT_STATS } from "@better-t-app/api/game";
 import { Button } from "@better-t-app/ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -28,6 +29,7 @@ import {
 	MatchBoard,
 } from "@/components/game/match-board";
 import { recoverMutationFailure } from "@/components/game/mutation-recovery";
+import { UnitGuide } from "@/components/game/unit-guide";
 import { useAttackEffect } from "@/components/game/use-attack-effect";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -219,7 +221,7 @@ function MatchRoute() {
 						</fieldset>
 						<p className="mt-1 text-muted-foreground text-sm">
 							{presentation.selectedUnit
-								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp}`
+								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp} / 移動 ${UNIT_STATS[presentation.selectedUnit.kind].movement}マス / 射程 ${UNIT_STATS[presentation.selectedUnit.kind].attackRange}マス / 攻撃力 ${UNIT_STATS[presentation.selectedUnit.kind].attack}`
 								: "自軍の未行動ユニットを選択してください。"}
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-2">
@@ -296,6 +298,7 @@ function MatchRoute() {
 							</div>
 						) : null}
 					</section>
+					<UnitGuide />
 					<ActionLog actions={match.recentActions} />
 					{match.status === "active" ? (
 						<Button

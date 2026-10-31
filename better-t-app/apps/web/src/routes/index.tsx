@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Crosshair, RotateCcw, Swords } from "lucide-react";
 
 import { StrategyGameBoard } from "@/components/game/strategy-game-board";
+import { UnitGuide } from "@/components/game/unit-guide";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
@@ -63,6 +64,7 @@ function HomeComponent() {
 						</p>
 					</aside>
 				</section>
+				<UnitGuide />
 				<section className="space-y-4">
 					<div className="flex flex-wrap items-end justify-between gap-3">
 						<div>
