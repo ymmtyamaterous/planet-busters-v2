@@ -1,4 +1,7 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { appRouter } from "@better-t-app/api/routers/index";
+import { migrateDb } from "@better-t-app/db";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -10,7 +13,14 @@ import { logger } from "hono/logger";
 
 import { createContext } from "./context";
 import { ENV } from "./env.server";
-import { auth } from "./services";
+import { auth, db } from "./services";
+
+// The build copies migrations next to the bundled entry; development uses the source tree.
+const bundledMigrations = fileURLToPath(new URL("./migrations", import.meta.url));
+const sourceMigrations = fileURLToPath(
+  new URL("../../../packages/db/src/migrations", import.meta.url),
+);
+await migrateDb(db, existsSync(bundledMigrations) ? bundledMigrations : sourceMigrations);
 
 const app = new Hono();
 

@@ -5,6 +5,7 @@ import * as React from "react";
 
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: Association and label text are supplied by consumers via props or children.
     <label
       data-slot="label"
       className={cn(

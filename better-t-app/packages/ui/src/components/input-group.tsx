@@ -9,6 +9,7 @@ import * as React from "react";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: This generic group cannot impose fieldset layout or legend semantics on all consumers.
     <div
       data-slot="input-group"
       role="group"
@@ -51,6 +52,8 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: This addon may contain buttons and is not a fieldset.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Clicking the decorative addon only focuses the input, which is independently keyboard accessible.
     <div
       role="group"
       data-slot="input-group-addon"

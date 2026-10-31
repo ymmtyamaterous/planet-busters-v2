@@ -127,4 +127,7 @@
   html {
     @apply font-sans;
   }
+  :is(button, a[href], input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
 }
