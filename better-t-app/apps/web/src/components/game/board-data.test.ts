@@ -1,10 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import {
 	type MatchSnapshot,
 	NEBULA_CROSSROADS_MAP,
 } from "@better-t-app/api/game";
 
-import { getBoardAction, getBoardPresentation } from "./board-data";
+import { getBoardAction, getBoardPresentation, requestMove } from "./board-data";
 
 const match: MatchSnapshot = {
 	id: "match-1",
@@ -86,13 +86,17 @@ describe("getBoardPresentation", () => {
 describe("getBoardAction", () => {
 	const presentation = getBoardPresentation(match, "human-fighter");
 
-	test("通常時は未行動の自軍ユニットだけを選択できる", () => {
+	test("通常時は自軍ユニットを選択し、表示中の移動先を選べる", () => {
 		expect(getBoardAction(match, presentation, null, { x: 2, y: 3 }, false)).toEqual({
 			type: "select",
 			unitId: "human-fighter",
 		});
 		expect(getBoardAction(match, presentation, null, { x: 4, y: 3 }, false)).toBeNull();
-		expect(getBoardAction(match, presentation, null, { x: 3, y: 3 }, false)).toBeNull();
+		expect(getBoardAction(match, presentation, null, { x: 3, y: 3 }, false)).toEqual({
+			type: "move",
+			destination: { x: 3, y: 3 },
+		});
+		expect(getBoardAction(match, getBoardPresentation(match, null), null, { x: 3, y: 3 }, false)).toBeNull();
 		const acted = { ...match, units: match.units.map((unit) => ({ ...unit, hasActed: true })) };
 		expect(getBoardAction(acted, presentation, null, { x: 2, y: 3 }, false)).toBeNull();
 	});
@@ -114,5 +118,38 @@ describe("getBoardAction", () => {
 		expect(getBoardAction(match, presentation, null, { x: 2, y: 3 }, true)).toBeNull();
 		expect(getBoardAction({ ...match, turnSide: "cpu" }, presentation, "move", { x: 3, y: 3 }, false)).toBeNull();
 		expect(getBoardAction({ ...match, status: "completed" }, presentation, "attack", { x: 4, y: 3 }, false)).toBeNull();
+	});
+});
+
+describe("requestMove", () => {
+	const presentation = getBoardPresentation(match, "human-fighter");
+	const destination = { x: 3, y: 3 };
+
+	test("確認した場合だけ選択ユニットと移動先を送信する", () => {
+		const submit = mock(() => {});
+		const confirm = mock((_message: string) => true);
+		requestMove(presentation, destination, false, confirm, submit);
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(confirm.mock.calls[0]?.[0]).toContain("戦闘機を (2, 3) から (3, 3)");
+		expect(submit).toHaveBeenCalledTimes(1);
+		expect(submit).toHaveBeenCalledWith("human-fighter", destination);
+	});
+
+	test("キャンセルした場合は移動しない", () => {
+		const submit = mock(() => {});
+		const confirm = mock(() => false);
+		requestMove(presentation, destination, false, confirm, submit);
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(submit).not.toHaveBeenCalled();
+	});
+
+	test("操作無効、ユニット未選択、移動不可のマスでは確認も送信もしない", () => {
+		const submit = mock(() => {});
+		const confirm = mock(() => true);
+		requestMove(presentation, destination, true, confirm, submit);
+		requestMove(getBoardPresentation(match, null), destination, false, confirm, submit);
+		requestMove(presentation, { x: 4, y: 3 }, false, confirm, submit);
+		expect(confirm).not.toHaveBeenCalled();
+		expect(submit).not.toHaveBeenCalled();
 	});
 });

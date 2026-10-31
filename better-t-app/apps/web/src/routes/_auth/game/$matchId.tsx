@@ -23,7 +23,7 @@ import {
 	performAttack,
 	toAttackEffectData,
 } from "@/components/game/attack-effect-data";
-import { getBoardPresentation } from "@/components/game/board-data";
+import { getBoardPresentation, requestMove } from "@/components/game/board-data";
 import {
 	type BoardActionMode,
 	MatchBoard,
@@ -116,13 +116,14 @@ function MatchRoute() {
 		setActionMode(null);
 	};
 	const move = (destination: GridPosition) => {
-		if (presentation.selectedUnit) {
-			submit({
-				type: "move",
-				unitId: presentation.selectedUnit.id,
-				destination,
-			});
-		}
+		requestMove(
+			presentation,
+			destination,
+			isSending || !isHumanTurn,
+			(message) => window.confirm(message),
+			(unitId, confirmedDestination) =>
+				submit({ type: "move", unitId, destination: confirmedDestination }),
+		);
 	};
 	const attack = async (target: AttackTarget) => {
 		const unit = presentation.selectedUnit;
@@ -224,6 +225,11 @@ function MatchRoute() {
 								? `${presentation.selectedUnit.kind === "battleship" ? "戦艦" : "戦闘機"} / HP ${presentation.selectedUnit.hp} / 移動 ${UNIT_STATS[presentation.selectedUnit.kind].movement}マス / 射程 ${UNIT_STATS[presentation.selectedUnit.kind].attackRange}マス / 攻撃力 ${UNIT_STATS[presentation.selectedUnit.kind].attack}`
 								: "自軍の未行動ユニットを選択してください。"}
 						</p>
+						{presentation.selectedUnit && actionMode !== "attack" ? (
+							<p className="mt-2 text-primary text-xs">
+								青い＋のマスをクリックして移動先を選択できます。
+							</p>
+						) : null}
 						<div className="mt-4 grid grid-cols-2 gap-2">
 							<Button
 								aria-label="移動先を選択"

@@ -36,16 +36,14 @@ export function getBoardAction(
 		return null;
 	const isAtPosition = (candidate: GridPosition) =>
 		candidate.x === position.x && candidate.y === position.y;
-	if (mode === "move") {
-		return presentation.reachablePositions.some(isAtPosition)
-			? { type: "move", destination: position }
-			: null;
-	}
 	if (mode === "attack") {
 		const target = presentation.attackTargets.find((candidate) =>
 			isAtPosition(candidate.position),
 		)?.target;
 		return target ? { type: "attack", target } : null;
+	}
+	if (presentation.reachablePositions.some(isAtPosition)) {
+		return { type: "move", destination: position };
 	}
 	const unit = match.units.find(
 		(candidate) =>
@@ -55,6 +53,31 @@ export function getBoardAction(
 			!candidate.hasActed,
 	);
 	return unit ? { type: "select", unitId: unit.id } : null;
+}
+
+export function requestMove(
+	presentation: BoardPresentation,
+	destination: GridPosition,
+	disabled: boolean,
+	confirm: (message: string) => boolean,
+	submit: (unitId: string, destination: GridPosition) => void,
+): void {
+	const unit = presentation.selectedUnit;
+	if (
+		disabled ||
+		!unit ||
+		!presentation.reachablePositions.some(
+			(position) => position.x === destination.x && position.y === destination.y,
+		)
+	) return;
+	const name = unit.kind === "battleship" ? "戦艦" : "戦闘機";
+	if (
+		confirm(
+			`${name}を (${unit.position.x}, ${unit.position.y}) から (${destination.x}, ${destination.y}) に移動しますか？\n移動すると、このターンは攻撃できません。`,
+		)
+	) {
+		submit(unit.id, destination);
+	}
 }
 
 export function getBoardPresentation(

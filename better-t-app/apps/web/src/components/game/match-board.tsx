@@ -80,7 +80,7 @@ export function MatchBoard({
 							BOARD_PADDING + y * CELL_SIZE,
 						);
 					}
-					for (const position of reachablePositions) {
+					for (const position of actionMode === "attack" ? [] : reachablePositions) {
 						const point = centerOf(position);
 						this.add
 							.rectangle(
